@@ -1,15 +1,15 @@
-const { firestore } = require("firebase-admin");
-const db = require("../../config/firebase");
-const Users = require("../../models/Users");
+const { firestore } = require('firebase-admin');
+const db = require('../../config/firebase');
+const Users = require('../../models/Users');
 
 const getDocumentHandler = async (req, reply) => {
   const { id } = req.params;
 
   try {
-    const documentRef = await db.collection("documents").doc(id).get();
+    const documentRef = await db.collection('documents').doc(id).get();
 
-    if (!documentRef || documentRef.data().draft) {
-      reply.status(404).send(new Error("Document not found"));
+    if (!documentRef.exists || documentRef?.data()?.draft) {
+      return reply.status(404).send(new Error('Document not found'));
     }
 
     const author = await getDocumentUser(documentRef.data().meta.userId);
@@ -17,7 +17,8 @@ const getDocumentHandler = async (req, reply) => {
 
     reply.send(newDoc);
   } catch (err) {
-    reply.status(500).send(new Error("There has been a server error"));
+    console.log(err);
+    reply.status(500).send(new Error('There has been a server error'));
   }
 };
 
@@ -25,13 +26,13 @@ const getDocumentsHandler = async (req, reply) => {
   const { page } = req.query;
 
   try {
-    const documentsRef = await db.collection("documents").get();
+    const documentsRef = await db.collection('documents').get();
     const refinedDocs = await refineDoc(documentsRef, page);
 
     reply.send(refinedDocs);
   } catch (err) {
     console.log(err);
-    reply.status(500).send(new Error("There has been a server error"));
+    reply.status(500).send(new Error('There has been a server error'));
   }
 };
 
@@ -40,21 +41,21 @@ const getCategoryDocumentsHandler = async (req, reply) => {
 
   try {
     const documentsLangRef = await db
-      .collection("documents")
-      .where("category", "==", category)
+      .collection('documents')
+      .where('category', '==', category)
       .get();
 
     if (documentsLangRef.empty) {
       return reply
         .status(404)
-        .send(new Error("There is no document on this category yet"));
+        .send(new Error('There is no document on this category yet'));
     }
 
-    const refinedLangDocs = await refineDoc(documentsLangRef, "all");
+    const refinedLangDocs = await refineDoc(documentsLangRef, 'all');
 
     reply.send(refinedLangDocs);
   } catch (err) {
-    reply.status(500).send(new Error("There has been a server error"));
+    reply.status(500).send(new Error('There has been a server error'));
   }
 };
 
@@ -64,21 +65,21 @@ const getTagDocumentsHandler = async (req, reply) => {
 
   try {
     const documentsTagRef = await db
-      .collection("documents")
-      .where("tag", "==", tag)
+      .collection('documents')
+      .where('tag', '==', tag)
       .get();
 
     if (documentsTagRef.empty) {
       return reply
         .status(404)
-        .send(new Error("There is no document on this tag yet"));
+        .send(new Error('There is no document on this tag yet'));
     }
 
-    const refinedTagDocs = await refineDoc(documentsTagRef, "all");
+    const refinedTagDocs = await refineDoc(documentsTagRef, 'all');
 
     reply.send(refinedTagDocs);
   } catch (err) {
-    reply.status(500).send(new Error("There has been a server error"));
+    reply.status(500).send(new Error('There has been a server error'));
   }
 };
 
@@ -87,8 +88,8 @@ const addDocumentHandler = async (req, reply) => {
   const { id: userId } = req.user;
 
   try {
-    const documentRef = await db.collection("documents").add({
-      id: "",
+    const documentRef = await db.collection('documents').add({
+      id: '',
       meta: {
         date,
         userId: userId.toString(),
@@ -105,19 +106,19 @@ const addDocumentHandler = async (req, reply) => {
 
     if (documentRef.id) {
       await db
-        .collection("documents")
+        .collection('documents')
         .doc(documentRef.id)
         .update({ id: documentRef.id });
 
       reply.send({
-        msg: "Added new document",
+        msg: 'Added new document',
       });
     }
 
     await reply;
   } catch (err) {
     console.log(err);
-    reply.status(500).send(new Error("There has been a server error"));
+    reply.status(500).send(new Error('There has been a server error'));
   }
 };
 
@@ -132,7 +133,7 @@ const updateDocumentHandler = async (req, reply) => {
     if (docRef.err) throw err;
 
     if (!docRef) {
-      return reply.status(404).send(new Error("Document not found"));
+      return reply.status(404).send(new Error('Document not found'));
     }
 
     await docRef.update({
@@ -148,11 +149,11 @@ const updateDocumentHandler = async (req, reply) => {
     });
 
     reply.send({
-      msg: "Document updated",
+      msg: 'Document updated',
     });
   } catch (err) {
     console.log(err);
-    reply.status(500).send(new Error("There has been a server error"));
+    reply.status(500).send(new Error('There has been a server error'));
   }
 };
 
@@ -164,17 +165,17 @@ const delDocumentHandler = async (req, reply) => {
     if (docRef.err) throw err;
 
     if (!docRef) {
-      return reply.status(404).send(new Error("Document not found"));
+      return reply.status(404).send(new Error('Document not found'));
     }
 
     await docRef.delete();
 
     reply.send({
-      msg: "Document deleted",
+      msg: 'Document deleted',
     });
   } catch (err) {
     console.log(err);
-    reply.status(500).send(new Error("There has been a server error"));
+    reply.status(500).send(new Error('There has been a server error'));
   }
 };
 
@@ -187,7 +188,7 @@ const updateDocumentHeartsHandler = async (req, reply) => {
     if (docRef.err) throw docRef.err;
 
     if (!docRef) {
-      return reply.status(404).send(new Error("Document not found"));
+      return reply.status(404).send(new Error('Document not found'));
     }
 
     const userData = await Users.findOne({ id: userId });
@@ -196,7 +197,7 @@ const updateDocumentHeartsHandler = async (req, reply) => {
     if (alreadyLikedDocument)
       return reply
         .status(400)
-        .send(new Error("You cannot undo what has been done :)"));
+        .send(new Error('You cannot undo what has been done :)'));
 
     await docRef.update({
       hearts: firestore.FieldValue.increment(1),
@@ -211,7 +212,7 @@ const updateDocumentHeartsHandler = async (req, reply) => {
     });
   } catch (err) {
     console.log(err);
-    reply.status(500).send(new Error("There has been a server error"));
+    reply.status(500).send(new Error('There has been a server error'));
   }
 };
 
@@ -223,7 +224,7 @@ const updateDocumentViewsHandler = async (req, reply) => {
     if (docRef.err) throw err;
 
     if (!docRef) {
-      return reply.status(404).send(new Error("Document not found"));
+      return reply.status(404).send(new Error('Document not found'));
     }
 
     await docRef.update({
@@ -235,7 +236,7 @@ const updateDocumentViewsHandler = async (req, reply) => {
     });
   } catch (err) {
     console.log(err);
-    reply.status(500).send(new Error("There has been a server error"));
+    reply.status(500).send(new Error('There has been a server error'));
   }
 };
 
@@ -250,7 +251,7 @@ const getUserDocumentHandler = async (req, reply) => {
     reply.send(userDocuments);
   } catch (err) {
     console.log(err);
-    reply.status(500).send(new Error("There has been a server error"));
+    reply.status(500).send(new Error('There has been a server error'));
   }
 };
 
@@ -258,11 +259,11 @@ const getUserDocumentHandler = async (req, reply) => {
 const getUsersDocuments = async (userId) => {
   try {
     const documentsRef = await db
-      .collection("documents")
-      .where("meta.userId", "==", userId)
+      .collection('documents')
+      .where('meta.userId', '==', userId)
       .get();
 
-    return await refineDoc(documentsRef, "all");
+    return await refineDoc(documentsRef, 'all');
   } catch (err) {
     return {
       err,
@@ -272,7 +273,7 @@ const getUsersDocuments = async (userId) => {
 
 const checkForDocExistence = async (id) => {
   try {
-    const documentRef = db.collection("documents").doc(id);
+    const documentRef = db.collection('documents').doc(id);
     const snapshot = await documentRef.get();
     if (!snapshot.exists) {
       return false;
@@ -281,7 +282,7 @@ const checkForDocExistence = async (id) => {
     return documentRef;
   } catch (err) {
     return {
-      err: "Server error",
+      err: 'Server error',
     };
   }
 };
@@ -292,7 +293,7 @@ const getDocumentUser = async (userId) => {
     return await Users.findOne({ id: userId });
   } catch (err) {
     return {
-      err: "Server error",
+      err: 'Server error',
     };
   }
 };
@@ -318,7 +319,7 @@ const refineDoc = async (documentsRef, page) => {
 
   return filterDocs(
     newDocsData,
-    page === "all" ? Math.floor(newDocsData.length / 20) : page
+    page === 'all' ? Math.floor(newDocsData.length / 20) : page
   );
 };
 
